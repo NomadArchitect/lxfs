@@ -7,6 +7,7 @@
 
 #include <lxfs.h>
 #include <cstring>
+#include <sys/stat.h>
 
 int cpHelp(char *name) {
     cerr << "Usage: " << name << " cp [disk image] [partition] [src file] [dst path]" << endl;
@@ -75,7 +76,23 @@ int cp(int argc, char **argv) {
 
             newEntry->owner = LXFS_USER_ROOT;
             newEntry->group = LXFS_USER_ROOT;
-            newEntry->permissions = LXFS_DEFAULT_PERMS;
+
+            struct stat statBuffer;
+            if(stat(src.c_str(), &statBuffer)) {
+                cerr << "failed to stat " << src << endl;
+                return -1;
+            }
+
+            newEntry->permissions = 0;
+            if(statBuffer.st_mode & S_IRUSR) newEntry->permissions |= LXFS_PERMS_OWNER_R;
+            if(statBuffer.st_mode & S_IWUSR) newEntry->permissions |= LXFS_PERMS_OWNER_W;
+            if(statBuffer.st_mode & S_IXUSR) newEntry->permissions |= LXFS_PERMS_OWNER_X;
+            if(statBuffer.st_mode & S_IRGRP) newEntry->permissions |= LXFS_PERMS_GROUP_R;
+            if(statBuffer.st_mode & S_IWGRP) newEntry->permissions |= LXFS_PERMS_GROUP_W;
+            if(statBuffer.st_mode & S_IXGRP) newEntry->permissions |= LXFS_PERMS_GROUP_X;
+            if(statBuffer.st_mode & S_IROTH) newEntry->permissions |= LXFS_PERMS_OTHER_R;
+            if(statBuffer.st_mode & S_IWOTH) newEntry->permissions |= LXFS_PERMS_OTHER_W;
+            if(statBuffer.st_mode & S_IXOTH) newEntry->permissions |= LXFS_PERMS_OTHER_X;
 
             time_t now = time(nullptr);
             newEntry->createTime = (uint64_t)now;
