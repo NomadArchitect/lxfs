@@ -6,6 +6,7 @@
  */
 
 #include <lxfs.h>
+#include <cstring>
 
 int cpHelp(char *name) {
     cerr << "Usage: " << name << " cp [disk image] [partition] [src file] [dst path]" << endl;
@@ -112,10 +113,16 @@ int cp(int argc, char **argv) {
             // and now write the actual file contents
             uint64_t block = newEntry->block;
             for(size_t i = 0; i < sizeBlocks; i++) {
-                //cout << "writing block " << dec << block << endl;
                 block = writeNextBlock(disk, partition, block, rawData.data() + (i * BLOCK_SIZE_BYTES));
             }
 
+            // update entry count of the parent directory
+            LXFSDirectoryHeader *dirHeader = (LXFSDirectoryHeader *) parentData.data();
+            dirHeader->sizeBytes += newEntry->entrySize;
+            dirHeader->sizeEntries++;
+            dirHeader->accessTime = (uint64_t)now;
+            dirHeader->modTime = (uint64_t)now;
+            writeBlock(disk, partition, parentEntry->block, 1, parentData.data());
             return 0;
         } else {
             newEntry = (LXFSDirectoryEntry *)((char *)newEntry + newEntry->entrySize);
